@@ -1,10 +1,13 @@
 document.addEventListener('DOMContentLoaded', function () {
-    //Configuration
+    // Configuration
     var numberOfFloors = 7; // Default number of floors
     var numberOfElevators = 3; // Default number of elevators
     var floorHeight = 110;
     var submitBtn = document.getElementById('submitBtn');
     var mainContainer = document.querySelector('.mainContainer');
+    if (submitBtn && mainContainer) {
+        console.log("knflvkn");
+    }
     submitBtn.addEventListener('click', function () {
         var numBuildingsInput = document.getElementById('numBuildings');
         var numFloorsInput = document.getElementById('numFloors');
@@ -26,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var elevatorsContainer = document.createElement('div');
             elevatorsContainer.classList.add('elevatorsContainer');
             // Create floors
-            for (var j = numFloors; j >= 0; j--) {
+            for (var j = numFloors - 1; j >= 0; j--) {
                 var floorDiv = document.createElement('div');
                 floorDiv.classList.add('floor');
                 var button = document.createElement('button');
@@ -55,6 +58,24 @@ document.addEventListener('DOMContentLoaded', function () {
             // Append building container to main container
             mainContainer.appendChild(buildingContainer);
         }
+        var _loop_2 = function (i) {
+            var button = document.getElementById("f".concat(i));
+            if (button) {
+                button.addEventListener("click", function () {
+                    var targetFloor = parseInt(button.id.replace("f", ""));
+                    controller.callElevator(targetFloor);
+                });
+            }
+            else {
+                console.error("Element with ID 'f".concat(i, "' not found."));
+            }
+        };
+        // Attach event listeners after generating dynamic elements
+        for (var i = 0; i < numFloors; i++) {
+            _loop_2(i);
+        }
+        // Instantiate controller after generating dynamic elements
+        var controller = new ElevatorController(numElevators, floorHeight);
     });
     var Elevator = /** @class */ (function () {
         function Elevator(id, element, floorHeight) {
@@ -196,12 +217,17 @@ document.addEventListener('DOMContentLoaded', function () {
     var controller = new ElevatorController(numberOfElevators, floorHeight);
     var _loop_1 = function (i) {
         var button = document.getElementById("f".concat(i));
-        button.addEventListener("click", function () {
-            var targetFloor = parseInt(button.id.replace("f", ""));
-            controller.callElevator(targetFloor);
-        });
+        if (button) {
+            button.addEventListener("click", function () {
+                var targetFloor = parseInt(button.id.replace("f", ""));
+                controller.callElevator(targetFloor);
+            });
+        }
+        else {
+            console.error("Element with ID 'f".concat(i, "' not found."));
+        }
     };
-    for (var i = 0; i <= numberOfFloors - 1; i++) {
+    for (var i = 0; i < numberOfFloors; i++) {
         _loop_1(i);
     }
 });
