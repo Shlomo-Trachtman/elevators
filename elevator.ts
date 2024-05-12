@@ -1,11 +1,75 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     //Configuration
-    let numberOfFloors: number = 7;
-    let numberOfElevators: number = 3;
+    let numberOfFloors: number = 7; // Default number of floors
+    let numberOfElevators: number = 3; // Default number of elevators
     const floorHeight = 110;
 
+    const submitBtn = document.getElementById('submitBtn')!;
+    const mainContainer = document.querySelector('.mainContainer')!;
 
+    submitBtn.addEventListener('click', () => {
+        const numBuildingsInput = document.getElementById('numBuildings') as HTMLInputElement;
+        const numFloorsInput = document.getElementById('numFloors') as HTMLInputElement;
+        const numElevatorsInput = document.getElementById('numElevators') as HTMLInputElement;
+    
+        const numBuildings = parseInt(numBuildingsInput.value);
+        const numFloors = parseInt(numFloorsInput.value);
+        const numElevators = parseInt(numElevatorsInput.value);
+    
+        // Clear existing buildings if any
+        mainContainer.innerHTML = '';
+    
+        // Generate buildings
+        for (let i = 0; i < numBuildings; i++) {
+            // Create building container
+            const buildingContainer = document.createElement('div');
+            buildingContainer.classList.add('buildingContainer');
+    
+            // Create floors container
+            const floorsContainer = document.createElement('div');
+            floorsContainer.classList.add('floorsContainer');
+    
+            // Create elevators container
+            const elevatorsContainer = document.createElement('div');
+            elevatorsContainer.classList.add('elevatorsContainer');
+    
+            // Create floors
+            for (let j = numFloors; j >= 0; j--) {
+                const floorDiv = document.createElement('div');
+                floorDiv.classList.add('floor');
+                const button = document.createElement('button');
+                button.id = `f${j}`;
+                button.classList.add('metal', 'linear');
+                button.innerText = `${j}`;
+                floorDiv.appendChild(button);
+                floorsContainer.appendChild(floorDiv);
+            }
+    
+            // Create elevators
+            for (let k = 0; k < numElevators; k++) {
+                const elevatorDiv = document.createElement('div');
+                elevatorDiv.classList.add(`elevator${k + 1}`);
+                const elevatorImg = document.createElement('img');
+                elevatorImg.id = `e${k}`;
+                elevatorImg.src = "elv.png";
+                elevatorImg.alt = `elevator${k + 1}`;
+                elevatorImg.height = 103;
+                elevatorDiv.appendChild(elevatorImg);
+                elevatorsContainer.appendChild(elevatorDiv);
+            }
+    
+            // Append floors container to building container
+            buildingContainer.appendChild(floorsContainer);
+    
+            // Append elevators container to building container
+            buildingContainer.appendChild(elevatorsContainer);
+    
+            // Append building container to main container
+            mainContainer.appendChild(buildingContainer);
+        }
+    });
+    
     
     interface BuildingElement {
         id: number;

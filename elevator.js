@@ -1,8 +1,61 @@
 document.addEventListener('DOMContentLoaded', function () {
     //Configuration
-    var numberOfFloors = 7;
-    var numberOfElevators = 3;
+    var numberOfFloors = 7; // Default number of floors
+    var numberOfElevators = 3; // Default number of elevators
     var floorHeight = 110;
+    var submitBtn = document.getElementById('submitBtn');
+    var mainContainer = document.querySelector('.mainContainer');
+    submitBtn.addEventListener('click', function () {
+        var numBuildingsInput = document.getElementById('numBuildings');
+        var numFloorsInput = document.getElementById('numFloors');
+        var numElevatorsInput = document.getElementById('numElevators');
+        var numBuildings = parseInt(numBuildingsInput.value);
+        var numFloors = parseInt(numFloorsInput.value);
+        var numElevators = parseInt(numElevatorsInput.value);
+        // Clear existing buildings if any
+        mainContainer.innerHTML = '';
+        // Generate buildings
+        for (var i = 0; i < numBuildings; i++) {
+            // Create building container
+            var buildingContainer = document.createElement('div');
+            buildingContainer.classList.add('buildingContainer');
+            // Create floors container
+            var floorsContainer = document.createElement('div');
+            floorsContainer.classList.add('floorsContainer');
+            // Create elevators container
+            var elevatorsContainer = document.createElement('div');
+            elevatorsContainer.classList.add('elevatorsContainer');
+            // Create floors
+            for (var j = numFloors; j >= 0; j--) {
+                var floorDiv = document.createElement('div');
+                floorDiv.classList.add('floor');
+                var button = document.createElement('button');
+                button.id = "f".concat(j);
+                button.classList.add('metal', 'linear');
+                button.innerText = "".concat(j);
+                floorDiv.appendChild(button);
+                floorsContainer.appendChild(floorDiv);
+            }
+            // Create elevators
+            for (var k = 0; k < numElevators; k++) {
+                var elevatorDiv = document.createElement('div');
+                elevatorDiv.classList.add("elevator".concat(k + 1));
+                var elevatorImg = document.createElement('img');
+                elevatorImg.id = "e".concat(k);
+                elevatorImg.src = "elv.png";
+                elevatorImg.alt = "elevator".concat(k + 1);
+                elevatorImg.height = 103;
+                elevatorDiv.appendChild(elevatorImg);
+                elevatorsContainer.appendChild(elevatorDiv);
+            }
+            // Append floors container to building container
+            buildingContainer.appendChild(floorsContainer);
+            // Append elevators container to building container
+            buildingContainer.appendChild(elevatorsContainer);
+            // Append building container to main container
+            mainContainer.appendChild(buildingContainer);
+        }
+    });
     var Elevator = /** @class */ (function () {
         function Elevator(id, element, floorHeight) {
             this.id = id;

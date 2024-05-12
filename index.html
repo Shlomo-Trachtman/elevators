@@ -8,48 +8,23 @@
 </head>
 
 <body>
-
-    <div class="main_container">
-        <div class="wrapper">
-            <div class="building_container">
-                <!-- Floors -->
-                <div class="floor">
-                    <button id="f6" class="metal linear">6</button>
-                </div>                
-                <div class="floor">
-                    <button id="f5" class="metal linear">5</button>
-                </div>               
-                <div class="floor">
-                    <button id="f4" class="metal linear">4</button>
-                </div>
-                <div class="floor">
-                    <button id="f3" class="metal linear">3</button>
-                </div>
-                <div class="floor">
-                    <button id="f2" class="metal linear">2</button>
-                </div>
-                <div class="floor">
-                    <button id="f1" class="metal linear">1</button>
-                </div>
-                <div class="floor">
-                    <button id="f0" class="metal linear">0</button>
-                </div>
-            </div>
-
-            <div class="elevators_container">
-                <div class="elevator1">
-                    <img id="e1" src="elv.png" alt="elevator1" height="103">
-                </div>
-                <div class="elevator2">
-                    <img id="e2" src="elv.png" alt="elevator1" height="103">
-                </div>
-                <div class="elevator3">
-                    <img id="e3" src="elv.png" alt="elevator1" height="103">
-                </div>
-            </div>
+    <div class="mainContainer">
+        <!-- Move the input section outside the building container -->
+        <div id="input_section">
+            <label for="numBuildings">Number of Buildings:</label>
+            <input type="number" id="numBuildings" value="1" min="1"><br>
+    
+            <label for="numFloors">Number of Floors per Building:</label>
+            <input type="number" id="numFloors" value="7" min="1"><br>
+    
+            <label for="numElevators">Number of Elevators per Building:</label>
+            <input type="number" id="numElevators" value="3" min="1"><br>
+    
+            <button id="submitBtn">Submit</button>
         </div>
+    
+        <!-- Building containers will be dynamically generated -->
     </div>
-
+        
     <script src="elevator.js"></script>
-
 </body>
