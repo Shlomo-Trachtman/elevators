@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var numberOfFloors = 7; // Default number of floors
     var numberOfElevators = 3; // Default number of elevators
     var floorHeight = 110;
+    // Add an array to track the current floor of each elevator
+    var elevatorCurrentFloors = Array.from({ length: numberOfElevators }, function () { return 0; });
+    // Add an array to track the queues for each elevator
+    var elevatorQueues = Array.from({ length: numberOfElevators }, function () { return []; });
     var submitBtn = document.getElementById('submitBtn');
     var mainContainer = document.querySelector('.mainContainer');
     if (submitBtn && mainContainer) {
@@ -58,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Append building container to main container
             mainContainer.appendChild(buildingContainer);
         }
-        var _loop_2 = function (i) {
+        var _loop_1 = function (i) {
             var button = document.getElementById("f".concat(i));
             if (button) {
                 button.addEventListener("click", function () {
@@ -72,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         // Attach event listeners after generating dynamic elements
         for (var i = 0; i < numFloors; i++) {
-            _loop_2(i);
+            _loop_1(i);
         }
         // Instantiate controller after generating dynamic elements
         var controller = new ElevatorController(numElevators, floorHeight);
@@ -131,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             setTimeout(function () {
                 console.log("Elevator Reached The Floor");
                 _this.playElevatorSound();
-            }, (calculateDuration * 500));
+            }, ((calculateDuration * 1000) - 500));
             setTimeout(function () {
                 if (_this.destinations.length > 0) {
                     console.log("Elevator Goes To Next Destination");
@@ -142,7 +146,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }, (calculateDuration * 1000) + stop);
         };
         Elevator.prototype.animateMovement = function (distanceToMove) {
-            var _this = this;
             var speed = 110 / 0.5;
             var stop = 2000;
             var duration = Math.abs((this.currentFloor * this.floorHeight) - distanceToMove) / speed;
@@ -152,82 +155,51 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.element.style.transform = "translateY(".concat(-distanceToMove, "px)");
             }
             else {
-                duration = this.currentFloor * this.floorHeight / speed;
-                this.element.style.transition = "transform ".concat(duration, "s ease");
-                console.log("distanceToMove: ".concat(distanceToMove, "px. Duration: ").concat(duration, "s"));
-                this.element.style.transform = "translateY(-0px)";
+                this.element.style.transition = "transform 0s ease";
+                console.log("distanceToMove: ".concat(distanceToMove, "px. Duration: 0s"));
+                this.element.style.transform = "translateY(0px)";
             }
-            setTimeout(function () {
-                _this.element.style.transition = " ";
-                _this.element.style.transform = " ";
-            }, (duration * 1000) + stop);
         };
         return Elevator;
     }());
-    var BuildingElementFactory = /** @class */ (function () {
-        function BuildingElementFactory() {
-        }
-        BuildingElementFactory.createBuildingElement = function (id, elementId) {
-            var element = document.getElementById(elementId);
-            return { id: id, element: element };
-        };
-        return BuildingElementFactory;
-    }());
-    var ElevatorFactory = /** @class */ (function () {
-        function ElevatorFactory() {
-        }
-        ElevatorFactory.createElevator = function (id, elementId, floorHeight) {
-            var buildingElement = BuildingElementFactory.createBuildingElement(id, elementId);
-            return new Elevator(buildingElement.id, buildingElement.element, floorHeight);
-        };
-        return ElevatorFactory;
-    }());
     var ElevatorController = /** @class */ (function () {
-        function ElevatorController(elevatorCount, floorHeight) {
+        function ElevatorController(numElevators, floorHeight) {
+            this.floorHeight = floorHeight;
             this.elevators = [];
-            for (var i = 0; i < elevatorCount; i++) {
-                var elementId = "e".concat(i);
-                this.elevators.push(ElevatorFactory.createElevator(i, "e".concat(i + 1), floorHeight));
+            // Initialize elevators
+            for (var i = 0; i < numElevators; i++) {
+                var elevatorElement = document.getElementById("e".concat(i));
+                if (elevatorElement) {
+                    var elevator = new Elevator(i, elevatorElement, floorHeight);
+                    this.elevators.push(elevator);
+                }
+                else {
+                    console.error("Element with ID 'e".concat(i, "' not found."));
+                }
             }
         }
-        ElevatorController.prototype.dispatchElevator = function (targetFloor) {
-            var closestElevator = this.elevators[0];
-            var minimumDistance = 110;
-            this.elevators.forEach(function (elevator) {
-                var distance = Math.abs(elevator.currentFloor - targetFloor);
-                if (distance < minimumDistance) {
-                    closestElevator = elevator;
-                    minimumDistance = distance;
-                }
-            });
-        };
-        //Find closest elevator and call it
         ElevatorController.prototype.callElevator = function (targetFloor) {
-            var closestElevator = this.elevators.reduce(function (prev, curr) {
-                return Math.abs(curr.currentFloor - targetFloor) < Math.abs(prev.currentFloor - targetFloor) ? curr : prev;
-            });
-            // Check if the closest elevator already on target floor
-            if (closestElevator.currentFloor === targetFloor) {
-                return;
+            // Find the elevator with the shortest queue in terms of time
+            var shortestQueueIndex = 0;
+            var shortestQueueTime = Infinity;
+            var _loop_2 = function (i) {
+                var elevator = this_1.elevators[i];
+                var timeToReachFloor = Math.abs(elevator.currentFloor - targetFloor) * 0.5; // Time to move from one floor to another
+                var timeToServeQueue = elevator.destinations.reduce(function (acc, floor) { return acc + Math.abs(floor - elevator.currentFloor); }, 0) * 2; // Time to serve existing queue
+                var totalQueueTime = timeToReachFloor + timeToServeQueue;
+                if (totalQueueTime < shortestQueueTime) {
+                    shortestQueueTime = totalQueueTime;
+                    shortestQueueIndex = i;
+                }
+            };
+            var this_1 = this;
+            for (var i = 0; i < this.elevators.length; i++) {
+                _loop_2(i);
             }
-            closestElevator.moveToFloor(targetFloor);
+            // Add the target floor to the shortest queue
+            var selectedElevator = this.elevators[shortestQueueIndex];
+            selectedElevator.moveToFloor(targetFloor);
         };
         return ElevatorController;
     }());
-    var controller = new ElevatorController(numberOfElevators, floorHeight);
-    var _loop_1 = function (i) {
-        var button = document.getElementById("f".concat(i));
-        if (button) {
-            button.addEventListener("click", function () {
-                var targetFloor = parseInt(button.id.replace("f", ""));
-                controller.callElevator(targetFloor);
-            });
-        }
-        else {
-            console.error("Element with ID 'f".concat(i, "' not found."));
-        }
-    };
-    for (var i = 0; i < numberOfFloors; i++) {
-        _loop_1(i);
-    }
 });
