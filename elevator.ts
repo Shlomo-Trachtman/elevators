@@ -1,102 +1,112 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Configuration
-    let numberOfFloors: number = 7; // Default number of floors
-    let numberOfElevators: number = 3; // Default number of elevators
     const floorHeight = 110;
-
-    // Add an array to track the current floor of each elevator
-    let elevatorCurrentFloors: number[] = Array.from({ length: numberOfElevators }, () => 0);
-
-    // Add an array to track the queues for each elevator
-    let elevatorQueues: number[][] = Array.from({ length: numberOfElevators }, () => []);
 
     const submitBtn = document.getElementById('submitBtn')!;
     const mainContainer = document.querySelector('.mainContainer')!;
-
-    if (submitBtn && mainContainer) {
-        console.log(`knflvkn`)
-    }
 
     submitBtn.addEventListener('click', () => {
         const numBuildingsInput = document.getElementById('numBuildings') as HTMLInputElement;
         const numFloorsInput = document.getElementById('numFloors') as HTMLInputElement;
         const numElevatorsInput = document.getElementById('numElevators') as HTMLInputElement;
-    
+
         const numBuildings = parseInt(numBuildingsInput.value);
         const numFloors = parseInt(numFloorsInput.value);
         const numElevators = parseInt(numElevatorsInput.value);
-    
+
         // Clear existing buildings if any
         mainContainer.innerHTML = '';
-    
+
         // Generate buildings
         for (let i = 0; i < numBuildings; i++) {
-            // Create building container
             const buildingContainer = document.createElement('div');
             buildingContainer.classList.add('buildingContainer');
-    
-            // Create floors container
+            buildingContainer.id = `building${i}`;
+            mainContainer.appendChild(buildingContainer);
+
+            new Building(i, numFloors, numElevators, floorHeight, buildingContainer);
+        }
+    });
+
+    class Building {
+        id: number;
+        numFloors: number;
+        numElevators: number;
+        floorHeight: number;
+        container: HTMLElement;
+        controller: ElevatorController;
+
+        constructor(id: number, numFloors: number, numElevators: number, floorHeight: number, container: HTMLElement) {
+            this.id = id;
+            this.numFloors = numFloors;
+            this.numElevators = numElevators;
+            this.floorHeight = floorHeight;
+            this.container = container;
+
+            this.initBuilding();
+        }
+
+        initBuilding() {
             const floorsContainer = document.createElement('div');
             floorsContainer.classList.add('floorsContainer');
-    
-            // Create elevators container
+
             const elevatorsContainer = document.createElement('div');
             elevatorsContainer.classList.add('elevatorsContainer');
-    
+
             // Create floors
-            for (let j = numFloors-1; j >= 0; j--) {
+            for (let j = this.numFloors - 1; j >= 0; j--) {
                 const floorDiv = document.createElement('div');
                 floorDiv.classList.add('floor');
                 const button = document.createElement('button');
-                button.id = `f${j}`;
+                button.id = `b${this.id}f${j}`;
                 button.classList.add('metal', 'linear');
                 button.innerText = `${j}`;
+
+                // Add timer span element
+                const timerSpan = document.createElement('span');
+                timerSpan.id = `b${this.id}t${j}`;
+                timerSpan.classList.add('timer');
+                timerSpan.innerText = '000';
+
                 floorDiv.appendChild(button);
+                floorDiv.appendChild(timerSpan);
                 floorsContainer.appendChild(floorDiv);
             }
-    
+
             // Create elevators
-            for (let k = 0; k < numElevators; k++) {
+            for (let k = 0; k < this.numElevators; k++) {
                 const elevatorDiv = document.createElement('div');
                 elevatorDiv.classList.add(`elevator${k + 1}`);
                 const elevatorImg = document.createElement('img');
-                elevatorImg.id = `e${k}`;
+                elevatorImg.id = `b${this.id}e${k}`;
                 elevatorImg.src = "elv.png";
                 elevatorImg.alt = `elevator${k + 1}`;
                 elevatorImg.height = 103;
                 elevatorDiv.appendChild(elevatorImg);
                 elevatorsContainer.appendChild(elevatorDiv);
             }
-    
-            // Append floors container to building container
-            buildingContainer.appendChild(floorsContainer);
-    
-            // Append elevators container to building container
-            buildingContainer.appendChild(elevatorsContainer);
-    
-            // Append building container to main container
-            mainContainer.appendChild(buildingContainer);
-        }
 
-        // Attach event listeners after generating dynamic elements
-        for (let i = 0; i < numFloors; i++) {
-            const button = document.getElementById(`f${i}`);
-            if (button) {
-                button.addEventListener("click", () => {
-                    const targetFloor = parseInt(button.id.replace("f", ""));
-                    controller.callElevator(targetFloor);
-                });
-            } else {
-                console.error(`Element with ID 'f${i}' not found.`);
+            this.container.appendChild(floorsContainer);
+            this.container.appendChild(elevatorsContainer);
+
+            // Instantiate controller for this building
+            this.controller = new ElevatorController(this.numElevators, this.floorHeight, this.id);
+
+            // Attach event listeners
+            for (let i = 0; i < this.numFloors; i++) {
+                const button = document.getElementById(`b${this.id}f${i}`);
+                if (button) {
+                    button.addEventListener("click", () => {
+                        const targetFloor = parseInt(button.id.replace(`b${this.id}f`, ""));
+                        this.controller.callElevator(targetFloor);
+                    });
+                } else {
+                    console.error(`Element with ID 'b${this.id}f${i}' not found.`);
+                }
             }
         }
+    }
 
-        // Instantiate controller after generating dynamic elements
-        const controller = new ElevatorController(numElevators, floorHeight);
-    });
-    
-    
     interface BuildingElement {
         id: number;
         element: HTMLElement;
@@ -108,8 +118,9 @@ document.addEventListener('DOMContentLoaded', () => {
         element: HTMLElement;
         floorHeight: number;
         destinations: number[];
-        inMotion: boolean; // Flag to indicate whether the elevator is in motion
+        inMotion: boolean;
         elevatorSound: HTMLAudioElement;
+        timerInterval: number | null;
 
         constructor(id: number, element: HTMLElement, floorHeight: number) {
             this.id = id;
@@ -117,14 +128,13 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element = element!;
             this.floorHeight = floorHeight;
             this.destinations = [];
-            this.inMotion = false; // Initialize inMotion flag to false
+            this.inMotion = false;
             this.elevatorSound = new Audio('ding.mp3');
-
+            this.timerInterval = null;
         }
 
         playElevatorSound() {
             this.elevatorSound.play();
-
         }
 
         stopElevatorSound() {
@@ -132,50 +142,34 @@ document.addEventListener('DOMContentLoaded', () => {
             this.elevatorSound.currentTime = 0;
         }
 
-        
-        moveToFloor(targetFloor: number){
+        moveToFloor(targetFloor: number) {
             this.destinations.push(targetFloor);
             this.processNextDestination();
-            
         }
 
         private processNextDestination() {
             if (!this.inMotion && this.destinations.length > 0 && this.currentFloor !== this.destinations[0]) {
                 const nextFloor = this.destinations.shift()!;
                 this.animateMovementToFloor(nextFloor);
-
             }
         }
 
         private animateMovementToFloor(targetFloor: number) {
-            let distanceToMove: number;
-            if (targetFloor === 0) { 
-                distanceToMove = 0;
-            } else {
-                distanceToMove = targetFloor * this.floorHeight;
-            }
-
-            // Calculate the duration of the movement
-            let floorPressed = targetFloor;
+            const distanceToMove = targetFloor * this.floorHeight;
             const speed = 110 / 0.5;
-            const stop = 2000;
-            let calculateDuration: number;
-                if (floorPressed === 0){
-                    calculateDuration = (this.currentFloor * this.floorHeight) / speed;
-                } else {
-                    calculateDuration = Math.abs((this.currentFloor - floorPressed) * this.floorHeight) / speed; 
-                }
-            
+            const calculateDuration = Math.abs((this.currentFloor - targetFloor) * this.floorHeight) / speed;
+            const travelTimeInSeconds = Math.ceil(calculateDuration);
+
             console.log(`Moving from floor ${this.currentFloor} to floor ${targetFloor}`);
-            this.inMotion = true; 
+            this.startCountdown(targetFloor, travelTimeInSeconds);
+            this.inMotion = true;
             this.animateMovement(distanceToMove);
             this.currentFloor = targetFloor;
-            
+
             setTimeout(() => {
                 console.log(`Elevator Reached The Floor`);
                 this.playElevatorSound();
-            }, ((calculateDuration * 1000)-500));
-            
+            }, (calculateDuration * 1000) - 500);
 
             setTimeout(() => {
                 if (this.destinations.length > 0) {
@@ -184,54 +178,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.inMotion = false;
                 this.processNextDestination();
                 this.stopElevatorSound();
-            }, (calculateDuration * 1000) + stop);
-        }        
+                this.resetTimer(targetFloor);
+            }, (calculateDuration * 1000) + 2000);
+        }
 
         public animateMovement(distanceToMove: number) {
             const speed = 110 / 0.5;
-            const stop = 2000;
-            let duration = Math.abs((this.currentFloor * this.floorHeight) - distanceToMove) / speed; 
-            if (distanceToMove > 0) {
-                this.element.style.transition = `transform ${duration}s ease`;
-                console.log(`distanceToMove: ${distanceToMove}px. Duration: ${duration}s`)
-                this.element.style.transform = `translateY(${-distanceToMove}px)`;
-            } else {
-                this.element.style.transition = `transform 0s ease`;
-                console.log(`distanceToMove: ${distanceToMove}px. Duration: 0s`)
-                this.element.style.transform = `translateY(0px)`;
+            const duration = Math.abs((this.currentFloor * this.floorHeight) - distanceToMove) / speed;
+            this.element.style.transition = `transform ${duration}s ease`;
+            this.element.style.transform = `translateY(${-distanceToMove}px)`;
+        }
+
+        private startCountdown(floor: number, seconds: number) {
+            const timerElement = document.getElementById(`b${this.id}t${floor}`);
+            if (timerElement) {
+                let remainingSeconds = seconds;
+                timerElement.innerText = remainingSeconds.toString().padStart(3, '0');
+                this.timerInterval = window.setInterval(() => {
+                    remainingSeconds--;
+                    timerElement.innerText = remainingSeconds.toString().padStart(3, '0');
+                    if (remainingSeconds <= 0) {
+                        clearInterval(this.timerInterval!);
+                    }
+                }, 1000);
             }
         }
 
+        private resetTimer(floor: number) {
+            const timerElement = document.getElementById(`b${this.id}t${floor}`);
+            if (timerElement) {
+                timerElement.innerText = '000';
+            }
+            if (this.timerInterval) {
+                clearInterval(this.timerInterval);
+                this.timerInterval = null;
+            }
+        }
     }
 
     class ElevatorController {
         elevators: Elevator[];
         floorHeight: number;
+        buildingId: number;
 
-        constructor(numElevators: number, floorHeight: number) {
+        constructor(numElevators: number, floorHeight: number, buildingId: number) {
             this.floorHeight = floorHeight;
+            this.buildingId = buildingId;
             this.elevators = [];
 
             // Initialize elevators
             for (let i = 0; i < numElevators; i++) {
-                const elevatorElement = document.getElementById(`e${i}`)!;
+                const elevatorElement = document.getElementById(`b${buildingId}e${i}`)!;
                 if (elevatorElement) {
                     const elevator = new Elevator(i, elevatorElement, floorHeight);
                     this.elevators.push(elevator);
                 } else {
-                    console.error(`Element with ID 'e${i}' not found.`);
+                    console.error(`Element with ID 'b${buildingId}e${i}' not found.`);
                 }
             }
         }
 
         callElevator(targetFloor: number) {
-            // Find the elevator with the shortest queue in terms of time
+            const elevatorOnFloor = this.elevators.find(elevator => elevator.currentFloor === targetFloor);
+
+            if (elevatorOnFloor) {
+                console.log(`Elevator ${elevatorOnFloor.id} is already on floor ${targetFloor}. Ignoring request.`);
+                return;
+            }
+
             let shortestQueueIndex = 0;
             let shortestQueueTime = Infinity;
             for (let i = 0; i < this.elevators.length; i++) {
                 const elevator = this.elevators[i];
-                const timeToReachFloor = Math.abs(elevator.currentFloor - targetFloor) * 0.5; // Time to move from one floor to another
-                const timeToServeQueue = elevator.destinations.reduce((acc, floor) => acc + Math.abs(floor - elevator.currentFloor), 0) * 2; // Time to serve existing queue
+                const timeToReachFloor = Math.abs(elevator.currentFloor - targetFloor) * 0.5;
+                const timeToServeQueue = elevator.destinations.reduce((acc, floor) => acc + Math.abs(floor - elevator.currentFloor), 0) * 2;
                 const totalQueueTime = timeToReachFloor + timeToServeQueue;
                 if (totalQueueTime < shortestQueueTime) {
                     shortestQueueTime = totalQueueTime;
@@ -239,9 +259,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Add the target floor to the shortest queue
             const selectedElevator = this.elevators[shortestQueueIndex];
             selectedElevator.moveToFloor(targetFloor);
         }
     }
+
 });

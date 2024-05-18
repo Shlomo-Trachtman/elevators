@@ -21,6 +21,8 @@
     border-width: 7px;
     border-right: solid black;
     border-left: solid black;
+    position: relative; /* Added position relative */
+
 }
 
 .metal {
@@ -163,4 +165,13 @@
     height: 50px; /* Adjust elevator height */
     background-color: #555; /* Elevator background color */
     margin-right: 5px; /* Add space between elevators */
+}
+
+.timer {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 1.4em;
+    color: #333;
+    background-color: white;
 }
