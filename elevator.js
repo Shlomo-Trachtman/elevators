@@ -17,16 +17,27 @@ document.addEventListener('DOMContentLoaded', function () {
             buildingContainer.classList.add('buildingContainer');
             buildingContainer.id = "building".concat(i);
             mainContainer.appendChild(buildingContainer);
-            new Building(i, numFloors, numElevators, floorHeight, buildingContainer);
+            var elevatorFactory = new ElevatorFactory();
+            new Building(i, numFloors, numElevators, floorHeight, buildingContainer, elevatorFactory);
         }
     });
+    // Elevator Factory
+    var ElevatorFactory = /** @class */ (function () {
+        function ElevatorFactory() {
+        }
+        ElevatorFactory.prototype.createElevator = function (id, element, floorHeight) {
+            return new Elevator(id, element, floorHeight);
+        };
+        return ElevatorFactory;
+    }());
     var Building = /** @class */ (function () {
-        function Building(id, numFloors, numElevators, floorHeight, container) {
+        function Building(id, numFloors, numElevators, floorHeight, container, elevatorFactory) {
             this.id = id;
             this.numFloors = numFloors;
             this.numElevators = numElevators;
             this.floorHeight = floorHeight;
             this.container = container;
+            this.elevatorFactory = elevatorFactory;
             this.initBuilding();
         }
         Building.prototype.initBuilding = function () {
@@ -54,15 +65,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             // Create elevators
             for (var k = 0; k < this.numElevators; k++) {
-                var elevatorDiv = document.createElement('div');
-                elevatorDiv.classList.add("elevator".concat(k + 1));
+                var elevatorElement = document.createElement('div');
+                elevatorElement.classList.add("elevator".concat(k + 1));
                 var elevatorImg = document.createElement('img');
                 elevatorImg.id = "b".concat(this.id, "e").concat(k);
                 elevatorImg.src = "elv.png";
                 elevatorImg.alt = "elevator".concat(k + 1);
                 elevatorImg.height = 103;
-                elevatorDiv.appendChild(elevatorImg);
-                elevatorsContainer.appendChild(elevatorDiv);
+                elevatorElement.appendChild(elevatorImg);
+                elevatorsContainer.appendChild(elevatorElement);
+                // Create elevator instance using factory
+                var elevator = this.elevatorFactory.createElevator(k, elevatorElement, this.floorHeight);
             }
             this.container.appendChild(floorsContainer);
             this.container.appendChild(elevatorsContainer);
@@ -123,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function () {
             var calculateDuration = Math.abs((this.currentFloor - targetFloor) * this.floorHeight) / speed;
             var travelTimeInSeconds = Math.ceil(calculateDuration);
             console.log("Moving from floor ".concat(this.currentFloor, " to floor ").concat(targetFloor));
-            this.startCountdown(targetFloor, travelTimeInSeconds);
             this.inMotion = true;
             this.animateMovement(distanceToMove);
             this.currentFloor = targetFloor;
@@ -138,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 _this.inMotion = false;
                 _this.processNextDestination();
                 _this.stopElevatorSound();
-                _this.resetTimer(targetFloor);
+                _this.resetTimer(_this.id, targetFloor);
             }, (calculateDuration * 1000) + 2000);
         };
         Elevator.prototype.animateMovement = function (distanceToMove) {
@@ -147,29 +159,54 @@ document.addEventListener('DOMContentLoaded', function () {
             this.element.style.transition = "transform ".concat(duration, "s ease");
             this.element.style.transform = "translateY(".concat(-distanceToMove, "px)");
         };
-        Elevator.prototype.startCountdown = function (floor, seconds) {
+        Elevator.prototype.startCountdown = function (buildingId, targetFloor) {
             var _this = this;
-            var timerElement = document.getElementById("b".concat(this.id, "t").concat(floor));
+            var timerElement = document.getElementById("b".concat(buildingId, "t").concat(targetFloor));
             if (timerElement) {
-                var remainingSeconds_1 = seconds;
-                timerElement.innerText = remainingSeconds_1.toString().padStart(3, '0');
-                this.timerInterval = window.setInterval(function () {
-                    remainingSeconds_1--;
-                    timerElement.innerText = remainingSeconds_1.toString().padStart(3, '0');
-                    if (remainingSeconds_1 <= 0) {
+                var totalTimeInSeconds_1 = this.calculateTotalTimeToReach(targetFloor);
+                timerElement.innerText = totalTimeInSeconds_1.toString().padStart(3, '0');
+                // Start the countdown
+                var startTime_1 = new Date().getTime();
+                var countdown = function () {
+                    var currentTime = new Date().getTime();
+                    var elapsedTimeInSeconds = Math.floor((currentTime - startTime_1) / 1000);
+                    var remainingTime = totalTimeInSeconds_1 - elapsedTimeInSeconds;
+                    // Update the timer display
+                    if (remainingTime >= 0) {
+                        timerElement.innerText = remainingTime.toString().padStart(3, '0');
+                    }
+                    else {
                         clearInterval(_this.timerInterval);
                     }
-                }, 1000);
+                };
+                // Update the countdown every second
+                this.timerInterval = window.setInterval(countdown, 1000);
+                // Update the timer immediately
+                countdown();
             }
         };
-        Elevator.prototype.resetTimer = function (floor) {
-            var timerElement = document.getElementById("b".concat(this.id, "t").concat(floor));
+        Elevator.prototype.calculateTotalTimeToReach = function (targetFloor) {
+            var totalTimeInSeconds = 0;
+            var lastFloor = this.currentFloor;
+            // Calculate time to serve all previous calls in the queue
+            for (var i = 0; i < this.destinations.length; i++) {
+                var destinationFloor = this.destinations[i];
+                var distance = Math.abs(destinationFloor - lastFloor);
+                var moveTime = distance * 0.5; // Time for movement
+                var stopTime = 2; // Time for stop
+                var subtotal = moveTime + stopTime; // Subtotal for this stop
+                totalTimeInSeconds += subtotal;
+                lastFloor = destinationFloor;
+            }
+            // Calculate time from the last floor in the queue to the target floor
+            var finalDistance = Math.abs(targetFloor - lastFloor);
+            totalTimeInSeconds += finalDistance * 0.5;
+            return totalTimeInSeconds;
+        };
+        Elevator.prototype.resetTimer = function (buildingId, floor) {
+            var timerElement = document.getElementById("b".concat(buildingId, "t").concat(floor));
             if (timerElement) {
                 timerElement.innerText = '000';
-            }
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
             }
         };
         return Elevator;
@@ -214,6 +251,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 _loop_2(i);
             }
             var selectedElevator = this.elevators[shortestQueueIndex];
+            selectedElevator.startCountdown(this.buildingId, targetFloor);
             selectedElevator.moveToFloor(targetFloor);
         };
         return ElevatorController;

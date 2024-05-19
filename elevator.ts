@@ -1,7 +1,6 @@
+
 document.addEventListener('DOMContentLoaded', () => {
-
     const floorHeight = 110;
-
     const submitBtn = document.getElementById('submitBtn')!;
     const mainContainer = document.querySelector('.mainContainer')!;
 
@@ -24,9 +23,17 @@ document.addEventListener('DOMContentLoaded', () => {
             buildingContainer.id = `building${i}`;
             mainContainer.appendChild(buildingContainer);
 
-            new Building(i, numFloors, numElevators, floorHeight, buildingContainer);
+            const elevatorFactory = new ElevatorFactory();
+            new Building(i, numFloors, numElevators, floorHeight, buildingContainer, elevatorFactory);
         }
     });
+
+    // Elevator Factory
+    class ElevatorFactory {
+        createElevator(id: number, element: HTMLElement, floorHeight: number): Elevator {
+            return new Elevator(id, element, floorHeight);
+        }
+    }
 
     class Building {
         id: number;
@@ -35,13 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
         floorHeight: number;
         container: HTMLElement;
         controller: ElevatorController;
+        elevatorFactory: ElevatorFactory;
 
-        constructor(id: number, numFloors: number, numElevators: number, floorHeight: number, container: HTMLElement) {
+        constructor(id: number, numFloors: number, numElevators: number, floorHeight: number, container: HTMLElement, elevatorFactory: ElevatorFactory) {
             this.id = id;
             this.numFloors = numFloors;
             this.numElevators = numElevators;
             this.floorHeight = floorHeight;
             this.container = container;
+            this.elevatorFactory = elevatorFactory;
 
             this.initBuilding();
         }
@@ -75,15 +84,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Create elevators
             for (let k = 0; k < this.numElevators; k++) {
-                const elevatorDiv = document.createElement('div');
-                elevatorDiv.classList.add(`elevator${k + 1}`);
+                const elevatorElement = document.createElement('div');
+                elevatorElement.classList.add(`elevator${k + 1}`);
                 const elevatorImg = document.createElement('img');
                 elevatorImg.id = `b${this.id}e${k}`;
                 elevatorImg.src = "elv.png";
                 elevatorImg.alt = `elevator${k + 1}`;
                 elevatorImg.height = 103;
-                elevatorDiv.appendChild(elevatorImg);
-                elevatorsContainer.appendChild(elevatorDiv);
+                elevatorElement.appendChild(elevatorImg);
+                elevatorsContainer.appendChild(elevatorElement);
+
+                // Create elevator instance using factory
+                const elevator = this.elevatorFactory.createElevator(k, elevatorElement, this.floorHeight);
             }
 
             this.container.appendChild(floorsContainer);
@@ -107,12 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    interface BuildingElement {
-        id: number;
-        element: HTMLElement;
-    }
-
-    class Elevator implements BuildingElement {
+    class Elevator {
         id: number;
         currentFloor: number;
         element: HTMLElement;
@@ -161,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const travelTimeInSeconds = Math.ceil(calculateDuration);
 
             console.log(`Moving from floor ${this.currentFloor} to floor ${targetFloor}`);
-            this.startCountdown(targetFloor, travelTimeInSeconds);
             this.inMotion = true;
             this.animateMovement(distanceToMove);
             this.currentFloor = targetFloor;
@@ -178,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.inMotion = false;
                 this.processNextDestination();
                 this.stopElevatorSound();
-                this.resetTimer(targetFloor);
+                this.resetTimer(this.id, targetFloor);
             }, (calculateDuration * 1000) + 2000);
         }
 
@@ -189,29 +195,66 @@ document.addEventListener('DOMContentLoaded', () => {
             this.element.style.transform = `translateY(${-distanceToMove}px)`;
         }
 
-        private startCountdown(floor: number, seconds: number) {
-            const timerElement = document.getElementById(`b${this.id}t${floor}`);
+        public startCountdown(buildingId: number, targetFloor: number) {
+            const timerElement = document.getElementById(`b${buildingId}t${targetFloor}`);
             if (timerElement) {
-                let remainingSeconds = seconds;
-                timerElement.innerText = remainingSeconds.toString().padStart(3, '0');
-                this.timerInterval = window.setInterval(() => {
-                    remainingSeconds--;
-                    timerElement.innerText = remainingSeconds.toString().padStart(3, '0');
-                    if (remainingSeconds <= 0) {
+                const totalTimeInSeconds = this.calculateTotalTimeToReach(targetFloor);
+                timerElement.innerText = totalTimeInSeconds.toString().padStart(3, '0');
+        
+                // Start the countdown
+                const startTime = new Date().getTime();
+                const countdown = () => {
+                    const currentTime = new Date().getTime();
+                    const elapsedTimeInSeconds = Math.floor((currentTime - startTime) / 1000);
+                    const remainingTime = totalTimeInSeconds - elapsedTimeInSeconds;
+        
+                    // Update the timer display
+                    if (remainingTime >= 0) {
+                        timerElement.innerText = remainingTime.toString().padStart(3, '0');
+                    } else {
                         clearInterval(this.timerInterval!);
                     }
-                }, 1000);
+                };
+        
+                // Update the countdown every second
+                this.timerInterval = window.setInterval(countdown, 1000);
+        
+                // Update the timer immediately
+                countdown();
             }
         }
+        
 
-        private resetTimer(floor: number) {
-            const timerElement = document.getElementById(`b${this.id}t${floor}`);
+            public calculateTotalTimeToReach(targetFloor: number): number {
+                let totalTimeInSeconds = 0;
+                let lastFloor = this.currentFloor;
+
+                // Calculate time to serve all previous calls in the queue
+                for (let i = 0; i < this.destinations.length; i++) {
+                    const destinationFloor = this.destinations[i];
+                    const distance = Math.abs(destinationFloor - lastFloor);
+                    const moveTime = distance * 0.5; // Time for movement
+                    const stopTime = 2; // Time for stop
+                    const subtotal = moveTime + stopTime; // Subtotal for this stop
+
+                    totalTimeInSeconds += subtotal;
+                    lastFloor = destinationFloor;
+
+
+
+                }
+
+                // Calculate time from the last floor in the queue to the target floor
+                const finalDistance = Math.abs(targetFloor - lastFloor);
+                totalTimeInSeconds += finalDistance * 0.5;
+
+                return totalTimeInSeconds;
+        }
+
+        resetTimer(buildingId: number, floor: number) {
+            const timerElement = document.getElementById(`b${buildingId}t${floor}`);
             if (timerElement) {
                 timerElement.innerText = '000';
-            }
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-                this.timerInterval = null;
             }
         }
     }
@@ -240,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         callElevator(targetFloor: number) {
             const elevatorOnFloor = this.elevators.find(elevator => elevator.currentFloor === targetFloor);
-
             if (elevatorOnFloor) {
                 console.log(`Elevator ${elevatorOnFloor.id} is already on floor ${targetFloor}. Ignoring request.`);
                 return;
@@ -260,8 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const selectedElevator = this.elevators[shortestQueueIndex];
+            selectedElevator.startCountdown(this.buildingId, targetFloor);
             selectedElevator.moveToFloor(targetFloor);
         }
     }
-
 });

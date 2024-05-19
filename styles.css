@@ -4,6 +4,8 @@
     margin-bottom: 20px;
     align-items: flex-end;
     border: solid black;
+    width: fit-content;
+
 }
 
 
